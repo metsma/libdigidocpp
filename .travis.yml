@@ -40,6 +40,7 @@ env:
   - AWS_DEFAULT_REGION=eu-west-1
 before_install: if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
     brew install swig awscli doxygen;
+    brew upgrade cmake;
     HASH=($(shasum prepare_osx_build_environment.sh));
     aws s3 cp s3://open-eid/libdigidocpp-cache/${TARGET}/${HASH}.zip ${HASH}.zip --no-sign-request;
     if [ $? -eq 0 ]; then
@@ -64,7 +65,7 @@ script: case ${TARGET} in
   *)
     docker run -e BUILD_NUMBER=${BUILD_NUMBER} -e RUN_TESTS=${RUN_TESTS} -e COVERITY_SCAN_TOKEN=${COVERITY_SCAN_TOKEN} -e TRAVIS_BRANCH=${TRAVIS_BRANCH} -e TARGET=${TARGET} -v ${HOME}:${HOME} -t "${TARGET}" /bin/bash -c "cd $(pwd);"'
       apt-get update -qq; 
-      apt-get install -y dh-make devscripts cdbs cmake vim-common xsdcxx libxml-security-c-dev zlib1g-dev doxygen swig openjdk-8-jdk-headless libboost-test-dev git curl wget ruby;
+      apt-get install -y dh-make devscripts cdbs cmake vim-common xsdcxx libxml-security-c-dev zlib1g-dev doxygen swig openjdk-8-jdk-headless libboost-test-dev git;
       export VERSION=$(grep project CMakeLists.txt | egrep -o "([0-9]{1,}\.)+[0-9]{1,}");
       export VERSIONEX=${VERSION}.${BUILD_NUMBER}.$(lsb_release -rs)
       export DEBFULLNAME="Travis";
@@ -73,6 +74,7 @@ script: case ${TARGET} in
       dch --distribution $(lsb_release -cs) -v ${VERSIONEX} "Release ${VERSIONEX}.";
       dpkg-buildpackage -rfakeroot -us -uc;
       if [ "${TARGET}" = "ubuntu:16.04" ]; then
+        apt-get install -y curl wget ruby;
         export COVERITY_SCAN_PROJECT_NAME="open-eid/libdigidocpp";
         export COVERITY_SCAN_NOTIFICATION_EMAIL="raul@metsma.ee";
         export COVERITY_SCAN_BRANCH_PATTERN=coverity_scan;

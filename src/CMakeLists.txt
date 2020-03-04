@@ -161,6 +161,36 @@ set_target_properties(digidocpp_priv PROPERTIES
     POSITION_INDEPENDENT_CODE YES
 )
 
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+    target_precompile_headers(digidocpp_priv
+      PUBLIC
+        <algorithm>
+        <cstdio>
+        <cstdlib>
+        <cstdarg>
+        <ctime>
+        <cmath>
+        <cstring>
+        <cerrno>
+        <string>
+        <functional>
+        <fstream>
+        <istream>
+        <iostream>
+        <sstream>
+        <set>
+        <stack>
+        <map>
+        <memory>
+        <regex>
+        <thread>
+        <future>
+        <vector>
+        <iomanip>
+        <iterator>
+    )
+endif()
+
 target_include_directories(digidocpp_priv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
