@@ -91,7 +91,7 @@ OCSP::OCSP(const X509Cert &cert, const X509Cert &issuer, const vector<unsigned c
             url = sk_OPENSSL_STRING_value(urls, 0);
         X509_email_free(urls);
     }
-    if(url.empty() || (TMProfile && url.find(".sk.ee") == string::npos))
+	if(url.empty())// || (TMProfile && url.find(".sk.ee") == string::npos))
         url = "http://ocsp.sk.ee/_proxy";
     DEBUG("OCSP url %s", url.c_str());
     if(url.empty())
