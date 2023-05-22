@@ -659,6 +659,45 @@ static int open(int argc, char* argv[])
 }
 
 /**
+ * Validate directory
+ *
+ * @param argc number of command line arguments.
+ * @param argv command line arguments.
+ * @return EXIT_FAILURE (1) - failure, EXIT_SUCCESS (0) - success
+ */
+static int directory(string_view path)
+{
+    std::error_code ec;
+    int returnCode = EXIT_SUCCESS;
+    set<fs::directory_entry> sorted_by_name;
+    for (auto &entry : fs::directory_iterator(fs::u8path(path), ec))
+        sorted_by_name.insert(entry);
+    static const set<fs::path> ext { ".asice", ".adoc", ".bdoc", ".edoc", ".ddoc"};
+    for(const auto &file: sorted_by_name)
+    {
+        if(!fs::is_regular_file(file.status()) || ext.find(file.path().extension()) == ext.cend())
+            continue;
+        cout << "Container file: " << file.path().u8string() << endl;
+        try {
+            unique_ptr<Container> doc = Container::openPtr(file.path().u8string());
+            auto signatures = doc->signatures();
+            if(none_of(signatures.cbegin(), signatures.cend(), [](Signature *s) { return validateSignature(s); }))
+                returnCode = EXIT_FAILURE;
+        } catch(const Exception &e) {
+            cout << "  Exception:" << endl << e;
+            returnCode = EXIT_FAILURE;
+        }
+    }
+    if(ec)
+    {
+        cout << "Failed to open directory " << path << endl;
+        cout << "  Exception: " << ec.message() << endl;
+        return EXIT_FAILURE;
+    }
+    return returnCode;
+}
+
+/**
  * Remove items from container.
  *
  * @param argc number of command line arguments.
@@ -993,6 +1032,8 @@ int main(int argc, char *argv[]) try
     string_view command(argv[1]);
     if(command == "open")
         return open(argc, argv);
+    if(command == "directory")
+        return directory(conf->path);
     if(command == "create")
         return create(*conf, argv[0]);
     if(command == "add")
