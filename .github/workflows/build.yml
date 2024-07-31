@@ -140,7 +140,7 @@ jobs:
     strategy:
       matrix:
         toolset: [143, 142]
-        platform: [x86, x64]
+        platform: [x86, x64, arm64]
         include:
         - toolset: 143
           image: windows-2022
@@ -148,6 +148,12 @@ jobs:
         - toolset: 142
           image: windows-2019
           vcvars: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\VC\\Auxiliary\\Build\\vcvarsall.bat"
+        - platform: x86
+          setenv: amd64_x86
+        - platform: x64
+          setenv: amd64
+        - platform: arm64
+          setenv: amd64_arm64
     env:
       VER_SUFFIX: .VS${{ matrix.toolset }}
       CXXFLAGS: '/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR' # https://github.com/actions/runner-images/issues/10004
@@ -177,12 +183,15 @@ jobs:
       run: |
         dotnet tool install -g wix --version 5.0.0
         wix extension -g add WixToolset.UI.wixext/5.0.0
+    - name: Setup dev env
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.setenv }}
     - name: Build
       run: |
         & .\build.ps1 `
           -vcpkg_installed ${{ github.workspace }}/vcpkg_installed `
           -vcvars "${{ matrix.vcvars }}" `
-          -platform ${{ matrix.platform }} `
           -swig C:/ProgramData/chocolatey/bin/swig.exe `
           -doxygen "C:/Program files/doxygen/bin/doxygen.exe" `
           -boost

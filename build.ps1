@@ -6,11 +6,10 @@ param(
   [string]$vcpkg_installed = $libdigidocpp,
   [string]$build_number = $(if ($null -eq $env:BUILD_NUMBER) {"0"} else {$env:BUILD_NUMBER}),
   [string]$msiversion = "3.18.0.$build_number",
-  [string]$platform = "x64",
+  [string]$platform = $env:VSCMD_ARG_TGT_ARCH,
   [string]$msi_name = "libdigidocpp-$msiversion$env:VER_SUFFIX.$platform.msi",
   [string]$cmake = "cmake.exe",
   [string]$generator = "NMake Makefiles",
-  [string]$vcvars = "vcvarsall",
   [string]$wix = "wix.exe",
   [string]$swig = $null,
   [string]$doxygen = $null,
@@ -36,7 +35,7 @@ if($boost) {
 
 foreach($type in @("Debug", "RelWithDebInfo")) {
   $buildpath = $platform+$type
-  & $vcvars $platform "&&" $cmake --fresh -B $buildpath -S $libdigidocpp "-G$generator" `
+  & $cmake --fresh -B $buildpath -S $libdigidocpp "-G$generator" `
     "-DCMAKE_BUILD_TYPE=$type" `
     "-DCMAKE_INSTALL_PREFIX=$platform" `
     "-DCMAKE_INSTALL_LIBDIR=bin" `
@@ -46,7 +45,7 @@ foreach($type in @("Debug", "RelWithDebInfo")) {
     $cmakeext "&&" $cmake --build $buildpath --target $target "&&" $cmake --install $buildpath
 }
 
-& $vcvars $platform "&&" $wix build -nologo -arch $platform -out $msi_name $wixext `
+& $wix build -nologo -arch $platform -out $msi_name $wixext `
   -ext WixToolset.UI.wixext `
   -bv "WixUIBannerBmp=$libdigidocpp/cmake/modules/banner.bmp" `
   -bv "WixUIDialogBmp=$libdigidocpp/cmake/modules/dlgbmp.bmp" `
@@ -57,6 +56,6 @@ foreach($type in @("Debug", "RelWithDebInfo")) {
   $libdigidocpp\libdigidocpp.wxs
 
 if($sign) {
-  & $vcvars $platform "&&" signtool.exe sign /a /v /s MY /n "$sign" /fd SHA256 /du http://installer.id.ee `
+  & signtool.exe sign /a /v /s MY /n "$sign" /fd SHA256 /du http://installer.id.ee `
     /tr http://sha256timestamp.ws.symantec.com/sha256/timestamp /td SHA256 "$msi_name"
 }
