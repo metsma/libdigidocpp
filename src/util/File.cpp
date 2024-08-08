@@ -361,11 +361,11 @@ string File::fromUriPath(string_view path)
     return ret;
 }
 
-vector<unsigned char> File::hexToBin(const string &in)
+vector<unsigned char> File::hexToBin(string_view in)
 {
     vector<unsigned char> out;
     char data[] = "00";
-    for(string::const_iterator i = in.cbegin(); distance(i, in.cend()) >= 2;)
+    for(auto i = in.cbegin(); distance(i, in.cend()) >= 2;)
     {
         data[0] = *(i++);
         data[1] = *(i++);

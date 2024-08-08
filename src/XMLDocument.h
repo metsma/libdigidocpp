@@ -328,20 +328,14 @@ struct XMLDocument: public unique_xml_t<decltype(xmlFreeDoc)>, public XMLNode
 
     static XMLDocument openStream(std::istream &is, const XMLName &name = {}, bool hugeFile = false)
     {
-        auto ctxt = make_unique_ptr(xmlCreateIOParserCtxt(nullptr, nullptr, [](void *context, char *buffer, int len) -> int {
+        int options = XML_PARSE_NOENT|XML_PARSE_DTDLOAD|XML_PARSE_DTDATTR|XML_PARSE_NONET;
+        if(hugeFile)
+            options |= XML_PARSE_HUGE;
+        return {xmlReadIO([](void *context, char *buffer, int len) -> int {
             auto *is = static_cast<std::istream *>(context);
             is->read(buffer, len);
             return is->good() || is->eof() ? int(is->gcount()) : -1;
-        }, nullptr, &is, XML_CHAR_ENCODING_NONE), xmlFreeParserCtxt);
-        ctxt->linenumbers = 1;
-        ctxt->options |= XML_PARSE_NOENT|XML_PARSE_DTDLOAD|XML_PARSE_DTDATTR|XML_PARSE_NONET;
-        ctxt->loadsubset |= XML_DETECT_IDS|XML_COMPLETE_ATTRS;
-        if(hugeFile)
-            ctxt->options |= XML_PARSE_HUGE;
-        auto result = xmlParseDocument(ctxt.get());
-        if(result != 0 || !ctxt->wellFormed)
-            THROW("%s", ctxt->lastError.message);
-        return {ctxt->myDoc, name};
+        }, nullptr, &is, "stream", nullptr, options), name};
     }
 
     static XMLDocument create(std::string_view name = {}, std::string_view href = {}, std::string_view prefix = {}) noexcept
