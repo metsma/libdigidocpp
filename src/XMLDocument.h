@@ -495,4 +495,9 @@ struct XMLDocument: public unique_xml_t<decltype(xmlFreeDoc)>, public XMLNode
     }
 };
 
+constexpr std::string_view DSIG_NS {"http://www.w3.org/2000/09/xmldsig#"};
+constexpr std::string_view XADES_NS {"http://uri.etsi.org/01903/v1.3.2#"};
+constexpr XMLName DigestMethod {"DigestMethod", DSIG_NS};
+constexpr XMLName DigestValue {"DigestValue", DSIG_NS};
+
 }

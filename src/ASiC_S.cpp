@@ -20,6 +20,7 @@
 #include "ASiC_S.h"
 
 #include "Conf.h"
+#include "DataFile_p.h"
 #include "SignatureTST.h"
 #include "SignatureXAdES_LTA.h"
 #include "crypto/Signer.h"
@@ -35,6 +36,7 @@ using namespace std;
 
 struct ASiC_S::Data {
     std::string name, mime, data;
+    bool root = false;
 
     Digest digest(Digest digest = {}) const
     {
@@ -173,7 +175,7 @@ void ASiC_S::save(const ZipSerialize &s)
         return;
     if(list.front()->profile() != ASIC_TST_PROFILE)
         THROW("ASiC-S container supports only TimeStampToken signing.");
-    for(const auto &[name, mime, data]: metadata)
+    for(const auto &[name, mime, data, root]: metadata)
         s.addFile(name, zproperty(name))(data);
 }
 
@@ -181,9 +183,65 @@ Signature *ASiC_S::sign(Signer *signer)
 {
     if(signer->profile() != ASIC_TST_PROFILE)
         THROW("ASiC-S container supports only TimeStampToken signing.");
-    if(!signatures().empty())
-        THROW("ASiC-S container supports only one TimeStampToken signature.");
-    return addSignature(make_unique<SignatureTST>(this));
+    if(signatures().empty())
+    {
+        auto sig = make_unique<SignatureTST>(this);
+        metadata.push_back({"META-INF/timestamp.tst", "application/vnd.etsi.timestamp-token", sig->save()});
+        return addSignature(std::move(sig));
+    }
+
+    string tstName = "META-INF/timestamp001.tst";
+    for(size_t i = 1;
+        any_of(metadata.cbegin(), metadata.cend(), [&tstName](const auto &f) { return f.name == tstName; });
+        tstName = Log::format("META-INF/timestamp%03zu.tst", ++i));
+
+    auto doc = XMLDocument::create("ASiCManifest", ASIC_NS, "asic");
+    auto ref = doc + "SigReference";
+    ref.setProperty("MimeType", "application/vnd.etsi.timestamp-token");
+    ref.setProperty("URI", tstName);
+
+    auto addRef = [&doc](const string &name, string_view mime, bool root, const Digest &digest) {
+        auto ref = doc + "DataObjectReference";
+        ref.setProperty("MimeType", mime);
+        ref.setProperty("URI", File::toUriPath(name));
+        if(root)
+            ref.setProperty("Rootfile", "true");
+        auto method = ref + DigestMethod;
+        method.setNS(method.addNS(DSIG_NS, "ds"));
+        method.setProperty("Algorithm", digest.uri());
+        auto value = ref + DigestValue;
+        value.setNS(value.addNS(DSIG_NS, "ds"));
+        value = digest.result();
+    };
+
+    DataFile *file = dataFiles().front();
+    Digest digest;
+    dynamic_cast<DataFilePrivate*>(file)->digest(digest);
+    addRef(file->fileName(), file->mediaType(), false, digest);
+    for(auto &data: metadata)
+    {
+        if(data.name == "META-INF/ASiCArchiveManifest.xml")
+        {
+            string mfsName = "META-INF/ASiCArchiveManifest001.xml";
+            for(size_t i = 0;
+                 any_of(metadata.cbegin(), metadata.cend(), [&mfsName](const auto &f) { return f.name == mfsName; });
+                 mfsName = Log::format("META-INF/ASiCArchiveManifest%03zu.xml", ++i));
+            data.name = mfsName;
+            data.root = true;
+        }
+        addRef(data.name, data.mime, data.root, data.digest());
+    }
+
+    string data;
+    doc.save([&data](const char *buf, size_t size) {
+        data.append(buf, size);
+        return size;
+    });
+    metadata.push_back({"META-INF/ASiCArchiveManifest.xml", "text/xml", std::move(data)});
+
+    auto sig = make_unique<SignatureTST>("META-INF/ASiCArchiveManifest.xml", std::move(doc), this);
+    metadata.push_back({tstName, "application/vnd.etsi.timestamp-token", sig->save()});
+    return addSignature(std::move(sig));
 }
 
 /**
