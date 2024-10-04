@@ -30,10 +30,6 @@
 using namespace digidoc;
 using namespace std;
 
-constexpr std::string_view DSIG_NS {"http://www.w3.org/2000/09/xmldsig#"};
-constexpr XMLName DigestMethod {"DigestMethod", DSIG_NS};
-constexpr XMLName DigestValue {"DigestValue", DSIG_NS};
-
 SignatureTST::SignatureTST(const string &data, ASiC_S *asicSDoc)
     : asicSDoc(asicSDoc)
     , timestampToken(make_unique<TS>((const unsigned char*)data.data(), data.size()))
@@ -55,6 +51,13 @@ SignatureTST::SignatureTST(ASiC_S *asicSDoc)
     dataFile->digest(digest);
     timestampToken = make_unique<TS>(digest);
 }
+
+SignatureTST::SignatureTST(string current, XMLDocument &&xml, ASiC_S *asicSDoc)
+    : asicSDoc(asicSDoc)
+    , file(std::move(current))
+    , doc(std::move(xml))
+    , timestampToken(make_unique<TS>(asicSDoc->fileDigest(file)))
+{}
 
 SignatureTST::~SignatureTST() = default;
 
@@ -161,7 +164,8 @@ string SignatureTST::profile() const
     return string(ASiC_S::ASIC_TST_PROFILE);
 }
 
-std::vector<unsigned char> SignatureTST::save() const
+string SignatureTST::save() const
 {
-    return *timestampToken;
+    vector<unsigned char> der = *timestampToken;
+    return {der.cbegin(), der.cend()};
 }
