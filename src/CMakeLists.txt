@@ -135,8 +135,9 @@ set_target_properties(digidocpp PROPERTIES
     POSITION_INDEPENDENT_CODE YES
 )
 
-target_include_directories(digidocpp
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+target_include_directories(digidocpp PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 )
 target_link_libraries(digidocpp PRIVATE ${CMAKE_DL_LIBS} minizip digidocpp_priv digidocpp_ver)
@@ -220,12 +221,26 @@ if(SWIG_FOUND)
 endif()
 
 install( TARGETS digidocpp
+    EXPORT digidocppExport
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     RESOURCE DESTINATION ${DIGIDOCPP_CONFIG_DIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/digidocpp
     FRAMEWORK DESTINATION ${FRAMEWORK_DESTINATION}
+)
+install(EXPORT digidocppExport
+    FILE digidocpp-config.cmake
+    NAMESPACE digidocpp::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/digidocpp
+)
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/digidocpp-config-version.cmake
+    COMPATIBILITY AnyNewerVersion
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/digidocpp-config-version.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/digidocpp
 )
 
 if(WIN32)

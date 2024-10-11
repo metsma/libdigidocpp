@@ -88,6 +88,7 @@
       <File Name="digidoc_javad.dll" />
       <File Name="_digidoc_pythond.pyd" />
 <?endif?>
+      <Files Include="cmake/digidocpp/*" />
     </ComponentGroup>
 
     <ComponentGroup Id="Schemas" Directory="INSTALLFOLDER" Subdirectory="schema">
