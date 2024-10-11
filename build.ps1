@@ -1,14 +1,14 @@
 #powershell -ExecutionPolicy ByPass -File build.ps1
 param(
   [string]$libdigidocpp = $PSScriptRoot,
+  [string]$platform = "x64",
   [string]$git = "git.exe",
   [string]$vcpkg = "vcpkg\vcpkg.exe",
   [string]$vcpkg_dir = (split-path -parent $vcpkg),
   [string]$vcpkg_installed = $libdigidocpp,
   [string]$vcpkg_installed_platform = "$vcpkg_installed\vcpkg_installed_$platform",
   [string]$build_number = $(if ($null -eq $env:BUILD_NUMBER) {"0"} else {$env:BUILD_NUMBER}),
-  [string]$msiversion = "4.0.0.$build_number",
-  [string]$platform = "x64",
+  [string]$msiversion = "4.1.0.$build_number",
   [string]$msi_name = "libdigidocpp-$msiversion$env:VER_SUFFIX.$platform.msi",
   [string]$cmake = "cmake.exe",
   [string]$generator = "NMake Makefiles",
