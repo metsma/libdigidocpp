@@ -55,7 +55,8 @@ foreach($type in @("Debug", "RelWithDebInfo")) {
   & $vcvars $platform "&&" $cmake --fresh -B $buildpath -S $libdigidocpp "-G$generator" `
     "-DCMAKE_BUILD_TYPE=$type" `
     "-DCMAKE_INSTALL_PREFIX=$platform" `
-    "-DCMAKE_INSTALL_LIBDIR=bin" `
+    "-DCMAKE_INSTALL_LIBDIR=." `
+    "-DCMAKE_INSTALL_BINDIR=." `
     "-DCMAKE_TOOLCHAIN_FILE=$vcpkg_dir/scripts/buildsystems/vcpkg.cmake" `
     "-DVCPKG_INSTALLED_DIR=$vcpkg_installed_platform" `
     "-DSIGNCERT=$sign" `

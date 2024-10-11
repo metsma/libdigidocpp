@@ -53,7 +53,7 @@
       <File Name="libxmlsec1-openssl.dll" />
     </ComponentGroup>
 
-    <ComponentGroup Id="Libraries" Source="$(var.libdigidocpp)\bin">
+    <ComponentGroup Id="Libraries" Source="$(var.libdigidocpp)">
       <File Name="digidocpp.dll" />
       <File Name="digidoc-tool.exe" />
       <File Source="$(var.libdigidocpp)\etc\digidocpp\digidocpp.conf" />
@@ -78,7 +78,7 @@
       <File Name="zlibd1.dll" />
     </ComponentGroup>
 
-    <ComponentGroup Id="LibrariesDev" Source="$(var.libdigidocpp)\bin">
+    <ComponentGroup Id="LibrariesDev" Source="$(var.libdigidocpp)">
       <Files Include="*.pdb" />
       <File Name="digidocpp.lib" />
       <File Name="digidocppd.dll" />
@@ -88,6 +88,7 @@
       <File Name="digidoc_javad.dll" />
       <File Name="_digidoc_pythond.pyd" />
 <?endif?>
+      <Files Include="cmake/digidocpp/*" />
     </ComponentGroup>
 
     <ComponentGroup Id="Schemas" Directory="INSTALLFOLDER" Subdirectory="schema">
