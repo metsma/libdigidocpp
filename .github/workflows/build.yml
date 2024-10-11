@@ -129,7 +129,7 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         name: fedora_${{ matrix.container }}
-        path: build/libdigidocpp*.rpm
+        path: build/*.rpm
   ubuntu:
     name: Build on ${{ matrix.dist }} ${{ matrix.ver }} ${{ matrix.arch }}
     runs-on: ubuntu-24.04${{ matrix.arch == 'arm64' && '-arm' || '' }}

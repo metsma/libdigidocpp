@@ -48,7 +48,7 @@ Recommends:
  opensc-pkcs11
 Conflicts:
  libdigidoc2 (<<3.0)
-Description: DigiDoc digital signature library
+Description: C++ library for digital signatures and validation of digitally signed documents
  DigiDoc is an XML file format for documents with digital signatures in use by
  the Estonian ID card infrastructure. This library allows for creation and
  reading of DigiDoc files.
@@ -60,7 +60,7 @@ Depends:
  libdigidocpp1 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends}
-Description: DigiDoc digital signature library tools
+Description: Command-line tool for digital signatures
  This package contains tools for manipulating signatures command line with the
  DigiDoc digital signature library.
 
@@ -116,6 +116,6 @@ Multi-Arch: foreign
 Section: doc
 Depends:
  ${misc:Depends}
-Description: DigiDoc digital signature library documentation
+Description: Documentation for libdigidocpp
  This package contains documentation for developing applications with the
  DigiDoc digital signature library.
