@@ -45,6 +45,13 @@ constexpr bool contains(const C &list, T value)
     return std::find(list.begin(), list.end(), std::forward<T>(value)) != list.end();
 }
 
+template<typename C, typename T>
+[[nodiscard]]
+constexpr bool contains_if(const C &list, T pred)
+{
+    return std::find_if(list.begin(), list.end(), std::forward<T>(pred)) != list.end();
+}
+
 template<typename C, typename P>
 [[nodiscard]]
 constexpr bool none_of(const C &list, P pred)

@@ -91,8 +91,11 @@ vector<X509Cert> X509CertStore::certs(const Type &type) const
     vector<X509Cert> certs;
     for(const TSL::Service &s: *d)
     {
-        if(type.find(s.type) != type.cend())
-            certs.insert(certs.cend(), s.certs.cbegin(), s.certs.cend());
+        for(const auto &[t, v]: s.validity)
+        {
+            if(v && type.find(v->type) != type.cend())
+                certs.insert(certs.cend(), s.certs.cbegin(), s.certs.cend());
+        }
     }
     return certs;
 }
@@ -102,12 +105,15 @@ X509Cert X509CertStore::findIssuer(const X509Cert &cert, const Type &type) const
     activate(cert);
     for(const TSL::Service &s: *d)
     {
-        if(type.find(s.type) == type.cend())
-            continue;
-        for(const X509Cert &i: s.certs)
+        for(const auto &[t, v]: s.validity)
         {
-            if(X509_check_issued(i.handle(), cert.handle()) == X509_V_OK)
-                return i;
+            if(!v || type.find(v->type) == type.cend())
+                continue;
+            for(const X509Cert &i: s.certs)
+            {
+                if(X509_check_issued(i.handle(), cert.handle()) == X509_V_OK)
+                    return i;
+            }
         }
     }
     return X509Cert();
@@ -163,27 +169,27 @@ int X509CertStore::validate(int ok, X509_STORE_CTX *ctx)
     auto current = util::date::to_string(X509_VERIFY_PARAM_get_time(X509_STORE_CTX_get0_param(ctx)));
     for(const TSL::Service &s: *instance()->d)
     {
-        if(type->find(s.type) == type->cend()) // correct service type
-            continue;
-        if(none_of(s.certs, [&](const X509Cert &issuer) {
-                if(issuer == x509) // certificate is listed by service
-                    return true;
-                if(X509_check_issued(issuer.handle(), x509) != X509_V_OK) // certificate is issued by service
-                    return false;
-                SCOPE(EVP_PKEY, pub, X509_get_pubkey(issuer.handle()));
-                if(X509_verify(x509, pub.get()) == 1) // certificate is signed by service
-                    return true;
-                ERR_clear_error();
-                return false;
-            })) // certificate is trusted by service
-            continue;
         for(auto i = s.validity.crbegin(), end = s.validity.crend(); i != end; ++i)
         {
             if(current < i->first) // Search older status
                 continue;
             if(!i->second.has_value()) // Has revoked
                 break;
-            X509_STORE_CTX_set_ex_data(ctx, 0, const_cast<TSL::Qualifiers*>(&i->second));
+            if(!contains(*type, i->second->type)) // correct service type
+                break;
+            if(none_of(s.certs, [&](const X509Cert &issuer) {
+                    if(issuer == x509) // certificate is listed by service
+                        return true;
+                    if(X509_check_issued(issuer.handle(), x509) != X509_V_OK) // certificate is issued by service
+                        return false;
+                    auto pub = make_unique_ptr(X509_get_pubkey(issuer.handle()), EVP_PKEY_free);
+                    if(X509_verify(x509, pub.get()) == 1) // certificate is signed by service
+                        return true;
+                    ERR_clear_error();
+                    return false;
+                })) // certificate is trusted by service
+                break;
+            X509_STORE_CTX_set_ex_data(ctx, 0, const_cast<TSL::Validity*>(&i->second.value()));
             return 1;
         }
     }
@@ -215,7 +221,7 @@ bool X509CertStore::verify(const X509Cert &cert, bool noqscd, tm validation_time
     if(noqscd)
         return true;
 
-    const auto *qualifiers = static_cast<const TSL::Qualifiers*>(X509_STORE_CTX_get_ex_data(csc.get(), 0));
+    const auto *v = static_cast<const TSL::Validity*>(X509_STORE_CTX_get_ex_data(csc.get(), 0));
     const vector<string> policies = cert.certificatePolicies();
     const vector<string> qcstatement = cert.qcStatements();
     const vector<X509Cert::KeyUsage> keyUsage = cert.keyUsage();
@@ -240,7 +246,7 @@ bool X509CertStore::verify(const X509Cert &cert, bool noqscd, tm validation_time
         });
     };
 
-    for(const TSL::Qualifier &q: qualifiers->value())
+    for(const TSL::Qualifier &q: v->qualifiers)
     {
         if(q.assert_ == "all")
         {

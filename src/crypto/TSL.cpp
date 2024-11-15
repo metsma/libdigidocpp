@@ -129,22 +129,16 @@ vector<TSL::Service> TSL::services() const
         for(auto service = pointer/"TSPServices"/"TSPService"; service; service++)
         {
             auto serviceInfo = service/"ServiceInformation";
-            string_view type = serviceInfo/"ServiceTypeIdentifier";
-            if(!contains(SERVICES_SUPPORTED, type))
-                continue;
             Service s;
-            s.type = type;
             s.name = toString(serviceInfo/"ServiceName");
             if(!parseInfo(serviceInfo, s))
                 continue;
             for(auto history = service/"ServiceHistory"/"ServiceHistoryInstance"; history; history++)
-            {
-                if(string_view historyType = history/"ServiceTypeIdentifier"; historyType != s.type)
-                    DEBUG("History service type is not supported %.*s", int(historyType.size()), historyType.data());
-                else
-                    parseInfo(history, s);
-            }
-            services.push_back(std::move(s));
+                parseInfo(history, s);
+            if(contains_if(s.validity, [](const auto &v) {
+                    return v.second.has_value() && contains(SERVICES_SUPPORTED, v.second->type);
+                }))
+                services.push_back(std::move(s));
         }
     }
     return services;
@@ -296,7 +290,8 @@ TSL TSL::parseTSL(const string &url, const vector<X509Cert> &certs,
 
 bool TSL::parseInfo(XMLNode info, Service &s)
 {
-    vector<Qualifier> qualifiers;
+    Validity v;
+    v.type = info/"ServiceTypeIdentifier";
     for(auto extension = info/"ServiceInformationExtensions"/"Extension"; extension; extension++)
     {
         if(extension["Critical"] == "true")
@@ -313,7 +308,7 @@ bool TSL::parseInfo(XMLNode info, Service &s)
             s.additional = additional/"URI";
         for(auto element = extension/XMLName{"Qualifications", ECC_NS}/"QualificationElement"; element; element++)
         {
-            Qualifier &q = qualifiers.emplace_back();
+            Qualifier &q = v.qualifiers.emplace_back();
             for(auto qualifier = element/"Qualifiers"/"Qualifier"; qualifier; qualifier++)
             {
                 if(auto uri = qualifier["uri"]; !uri.empty())
@@ -366,7 +361,7 @@ bool TSL::parseInfo(XMLNode info, Service &s)
     s.certs.insert(s.certs.cend(), make_move_iterator(certs.begin()), make_move_iterator(certs.end()));
 
     if(string_view serviceStatus = info/"ServiceStatus"; contains(SERVICESTATUS_START, serviceStatus))
-        s.validity.emplace(info/"StatusStartingTime", std::move(qualifiers));
+        s.validity.emplace(info/"StatusStartingTime", std::move(v));
     else if(contains(SERVICESTATUS_END, serviceStatus))
         s.validity.emplace(info/"StatusStartingTime", nullopt);
     else
