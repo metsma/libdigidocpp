@@ -16,6 +16,7 @@ target_link_libraries(TSLTests digidocpp digidocpp_tsl Boost::unit_test_framewor
 target_link_libraries(X509CertStoreTests digidocpp digidocpp_tsl Boost::unit_test_framework ${CMAKE_DL_LIBS})
 if(WIN32)
     set_target_properties(unittests TSLTests X509CertStoreTests PROPERTIES COMPILE_FLAGS "/bigobj")
+    target_link_libraries(unittests ws2_32)
 endif()
 add_test(NAME unittests
     COMMAND unittests --build_info=YES --report_level=no -- ${CMAKE_CURRENT_SOURCE_DIR}/data

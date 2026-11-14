@@ -28,7 +28,7 @@
 | -------------- | ----------------------------------------------- | ----------- | ---------------- |
 | `ca.crt`       | RSA-2048 root CA                                | Self-signed |                  |
 | `inter.crt`    | RSA-2048 intermediate CA                        | `ca.crt`    |                  |
-| `ocsp.crt`     | RSA-2048 OCSP responder                         | `ca.crt`    |                  |
+| `ocsp.p12`     | RSA-2048 OCSP responder key and certificate     | `ca.crt`    | `ocsp`           |
 | `tsa.p12`      | RSA-2048 time-stamping unit key and certificate | `ca.crt`    | `tsa`            |
 | `signer1.p12`  | RSA-2048 signing key and certificate            | `inter.crt` | `signer1`        |
 | `signer2.p12`  | RSA-2048 signing key and certificate            | `inter.crt` | `signer2`        |
@@ -60,19 +60,21 @@ The certificates are valid for 3650 days from generation, except `unicode.crt`, 
 lists still refer to the old certificates and need separate updates if those fixtures are replaced.
 The script does not regenerate `tsl.asice` or the `EE_T-*.xml` lists described below.
 
-### Local time-stamping service
+### Local time-stamping and OCSP services
 
-The unit test suite does not use the demo TSA. `test/Responder.cpp` serves RFC 3161 time-stamps
-on a free `127.0.0.1` port for the whole run, signed with the `tsa.p12` key, and the tests set
-`TestConfig::tsaUrl` to it. The cached [EE_T.xml](EE_T.xml) therefore differs from the
-[open-eid test-TL](https://github.com/open-eid/test-TL/blob/master/EE_T.xml): it adds a granted
-`TSA/QTST` service `CN=libdigidocpp TSA,C=EE` with the `tsa.p12` certificate and is re-signed with
-the `C=EE/CN=Test TSL` key. Keep that service when refreshing `EE_T.xml` from upstream, and update it
-when `tsa.p12` is regenerated. OCSP requests still go to the `http://demo.sk.ee/ocsp` responder named
-in the test certificates.
+The unit test suite does not use the network. `test/Responder.cpp` serves RFC 3161 time-stamps
+signed with the `tsa.p12` key and RFC 6960 OCSP responses signed with the `ocsp.p12` key on a free
+`127.0.0.1` port for the whole run, and the tests point `TestConfig::tsaUrl` and
+`TestConfig::ocspUrl` to it. The OCSP URL replaces the `http://demo.sk.ee/ocsp` responder named in
+the test certificates. The responder reports certificates issued by `inter.crt` as good, except
+`signer3.p12`, which it reports as unknown; certificates from any other issuer are unknown.
 
-The local responder uses one-second receive and send inactivity timeouts so stalled requests do not
-block test-suite shutdown.
+The cached [EE_T.xml](EE_T.xml) therefore differs from the
+[open-eid test-TL](https://github.com/open-eid/test-TL/blob/master/EE_T.xml): it adds the granted
+`TSA/QTST` service `CN=libdigidocpp TSA,C=EE` and `Certstatus/OCSP/QC` service
+`CN=libdigidocpp OCSP,C=EE` with those certificates, and is re-signed with the `C=EE/CN=Test TSL`
+key. Keep both services when refreshing `EE_T.xml` from upstream, and update them when `tsa.p12` or
+`ocsp.p12` is regenerated.
 
 ## TSL tests
 

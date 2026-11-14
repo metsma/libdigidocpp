@@ -13,6 +13,7 @@ openssl x509 -req -in inter.req -out inter.crt -CA ca.crt -CAkey ca.key -CAseria
 
 openssl req -out ocsp.req -new -newkey rsa:2048 -nodes -keyout ocsp.key -subj "/C=EE/CN=libdigidocpp OCSP"
 openssl x509 -req -in ocsp.req -out ocsp.crt -CA ca.crt -CAkey ca.key -CAserial caserial.txt -extfile openssl.conf -extensions v3_ocsp -days 3650 -sha512
+openssl pkcs12 -export -in ocsp.crt -inkey ocsp.key -out ocsp.p12 -password pass:ocsp
 # Server: openssl ocsp -index index.txt -CA ca.crt -rsigner ocsp.crt -rkey ocsp.key -port 8080
 # Client: openssl ocsp -issuer inter.crt -cert signer1.crt -url http://localhost:8080 -VAfile ocsp.crt -text
 

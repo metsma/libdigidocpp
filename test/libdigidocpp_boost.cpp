@@ -21,7 +21,6 @@
 #include <util/XMLText.h>
 #include <util/ZipSerialize.h>
 
-#include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <zlib.h>
@@ -43,6 +42,9 @@ public:
         initiallyAllowsSHA1 = allowsSHA1Verification();
         initialize("untitestboost");
         TestConfig::tsaUrl = responder.tsaUrl();
+        TestConfig::ocspUrl = responder.ocspUrl();
+        responder.addIssuer(X509Cert("inter.crt", X509Cert::Pem).handle());
+        responder.setStatus(PKCS12Signer("signer3.p12", "signer3").cert().handle(), V_OCSP_CERTSTATUS_UNKNOWN);
     }
 
     static bool allowsSHA1Verification()
@@ -57,7 +59,7 @@ public:
         return allowed;
     }
 
-    test::Responder responder{"tsa.p12", "tsa"};
+    test::Responder responder{"tsa.p12", "tsa", "ocsp.p12", "ocsp"};
 };
 
 class ASiCE: public Container
@@ -100,36 +102,6 @@ public:
 private:
     Exception exception;
 };
-
-// Signing and extending call the demo OCSP service, named in the test
-// certificates' AIA extension; time-stamps come from the local Responder.
-// Without a network connection these test cases are skipped instead of
-// failing (#675).
-boost::test_tools::assertion_result networkAvailable(boost::unit_test::test_unit_id)
-{
-    static const auto result = [] {
-        string host = "http://demo.sk.ee/ocsp";
-        string port = host.starts_with("https://") ? "443" : "80";
-        if(size_t pos = host.find("://"); pos != string::npos)
-            host.erase(0, pos + 3);
-        host = host.substr(0, host.find('/'));
-        if(host.find(':') == string::npos)
-            host += ':' + port;
-        auto bio = make_unique_ptr<BIO_free_all>(BIO_new_connect(host.c_str()));
-        bool connected = false;
-        if(bio)
-        {
-            BIO_set_nbio(bio.get(), 1);
-            connected = BIO_do_connect_retry(bio.get(), 5, 100) > 0;
-        }
-        ERR_clear_error();
-        boost::test_tools::assertion_result r(connected);
-        if(!connected)
-            r.message() << "no network connection to " << host;
-        return r;
-    }();
-    return result;
-}
 
 void append16(vector<unsigned char> &data, uint16_t value)
 {
@@ -663,7 +635,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(document, Doc, DocTypes)
         0x9F, 0x56, 0xC9, 0x48 }));
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE_TEMPLATE(signature, Doc, DocTypes)
 {
     auto d = Container::createPtr("test." + Doc::EXT);
@@ -780,7 +751,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(signature, Doc, DocTypes)
     BOOST_CHECK_EQUAL(d->signatures().size(), 0U);
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE(weakDigest)
 {
     // ETSI TS 119 312 V2.1.1 Annex D discontinues SHA-224; SHA3-224 is not in any table
@@ -817,7 +787,6 @@ BOOST_AUTO_TEST_CASE(weakDigest)
     BOOST_CHECK_EQUAL(validator.warnings().front(), Exception::SignatureDigestWeak);
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE_TEMPLATE(files, Doc, DocTypes)
 {
     PKCS12Signer signer1("signer1.p12", "signer1");
@@ -839,7 +808,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(files, Doc, DocTypes)
     }
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE_TEMPLATE(signatureParameters, Doc, DocTypes)
 {
     auto d = Container::createPtr("test." + Doc::EXT);
@@ -868,7 +836,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(signatureParameters, Doc, DocTypes)
         string time_s = util::date::to_string(time(nullptr)).substr(0, 16);
         BOOST_WARN_EQUAL(s1->claimedSigningTime().substr(0, 16), time_s);
         BOOST_WARN_EQUAL(s1->OCSPProducedAt().substr(0, 16), time_s);
-        BOOST_CHECK_EQUAL(s1->OCSPCertificate().subjectName("CN").find_first_of("TEST of SK OCSP RESPONDER"), 0U);
+        BOOST_CHECK_EQUAL(s1->OCSPCertificate().subjectName("CN"), "libdigidocpp OCSP");
     }
 
     BOOST_CHECK_NO_THROW(d->save(Doc::EXT + ".tmp")); //Check if reloading and binary files work
@@ -1409,7 +1377,6 @@ BOOST_AUTO_TEST_CASE(ThrowsWithNoSignatures)
     BOOST_CHECK_THROW(Container::extendContainerValidity(*d, &signer, extendedCount), Exception);
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE(ExtendAsiceInPlace)
 {
     // Sign with TS profile, extend in place to TSA
@@ -1433,7 +1400,6 @@ BOOST_AUTO_TEST_CASE(ExtendAsiceInPlace)
         BOOST_CHECK_NO_THROW(d->signatures().front()->validate());
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE(ExtendAsicsInPlace)
 {
     // ASiC-S timestamp token is always extended in place (re-timestamped)
@@ -1448,7 +1414,6 @@ BOOST_AUTO_TEST_CASE(ExtendAsicsInPlace)
     BOOST_CHECK_EQUAL(extendedCount, 1U);
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE(WrapContainerWithExpiredSignatures)
 {
     // test.asice has signatures with expired certificates, expect wrapping into new ASiC-S
@@ -1469,7 +1434,6 @@ BOOST_AUTO_TEST_CASE(WrapContainerWithExpiredSignatures)
         BOOST_CHECK_NO_THROW(wrapped->signatures().front()->validate());
 }
 
-BOOST_TEST_DECORATOR(* boost::unit_test::precondition(networkAvailable))
 BOOST_AUTO_TEST_CASE(WrapContainerUsesArchiveTSA)
 {
     // The signature TSA is unreachable, so wrapping only succeeds from the archive TSA

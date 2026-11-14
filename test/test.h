@@ -84,6 +84,7 @@ struct TestConfig: public ConfCurrent
         return profiles;
     }
     string TSUrl() const override { return tsaUrl; }
+    string ocsp(const string &issuer) const override { return ocspUrl.empty() ? ConfCurrent::ocsp(issuer) : ocspUrl; }
     bool TSLAutoUpdate() const override { return false; }
     string TSLCache() const override { return path; }
     bool TSLOnlineDigest() const override { return false; }
@@ -93,6 +94,7 @@ struct TestConfig: public ConfCurrent
     string tsl;
     string path;
     inline static string tsaUrl = "http://demo.sk.ee/tsa/";
+    inline static string ocspUrl;
 };
 DIGIDOCPP_WARNING_POP
 
