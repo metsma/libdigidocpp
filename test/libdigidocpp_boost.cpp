@@ -3,6 +3,7 @@
 
 #define BOOST_TEST_MODULE "C++ Unit Tests for libdigidocpp"
 #include "test.h"
+#include "Responder.h"
 
 #include <boost/mpl/list.hpp>
 
@@ -41,6 +42,7 @@ public:
     {
         initiallyAllowsSHA1 = allowsSHA1Verification();
         initialize("untitestboost");
+        TestConfig::tsaUrl = responder.tsaUrl();
     }
 
     static bool allowsSHA1Verification()
@@ -54,6 +56,8 @@ public:
         ERR_clear_error();
         return allowed;
     }
+
+    test::Responder responder{"tsa.p12", "tsa"};
 };
 
 class ASiCE: public Container
@@ -97,12 +101,14 @@ private:
     Exception exception;
 };
 
-// Signing and extending call the demo TSA and OCSP services. Without a
-// network connection these test cases are skipped instead of failing (#675).
+// Signing and extending call the demo OCSP service, named in the test
+// certificates' AIA extension; time-stamps come from the local Responder.
+// Without a network connection these test cases are skipped instead of
+// failing (#675).
 boost::test_tools::assertion_result networkAvailable(boost::unit_test::test_unit_id)
 {
     static const auto result = [] {
-        string host = Conf::instance()->TSUrl();
+        string host = "http://demo.sk.ee/ocsp";
         string port = host.starts_with("https://") ? "443" : "80";
         if(size_t pos = host.find("://"); pos != string::npos)
             host.erase(0, pos + 3);

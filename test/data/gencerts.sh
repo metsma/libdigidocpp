@@ -16,6 +16,10 @@ openssl x509 -req -in ocsp.req -out ocsp.crt -CA ca.crt -CAkey ca.key -CAserial 
 # Server: openssl ocsp -index index.txt -CA ca.crt -rsigner ocsp.crt -rkey ocsp.key -port 8080
 # Client: openssl ocsp -issuer inter.crt -cert signer1.crt -url http://localhost:8080 -VAfile ocsp.crt -text
 
+openssl req -out tsa.req -new -newkey rsa:2048 -nodes -keyout tsa.key -subj "/C=EE/CN=libdigidocpp TSA"
+openssl x509 -req -in tsa.req -out tsa.crt -CA ca.crt -CAkey ca.key -CAserial caserial.txt -extfile openssl.conf -extensions v3_tsa -days 3650 -sha512
+openssl pkcs12 -export -in tsa.crt -inkey tsa.key -out tsa.p12 -password pass:tsa
+
 for i in $(seq 1 3); do
 	openssl req -out signer$i.req -new -newkey rsa:2048 -nodes -keyout signer$i.key -subj "/C=EE/CN=signer$i"
 	openssl x509 -req -in signer$i.req -out signer$i.crt -CA inter.crt -CAkey inter.key -CAserial interserial.txt -extfile openssl.conf -extensions v3_usr -days 3650 -sha512

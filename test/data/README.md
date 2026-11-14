@@ -24,18 +24,19 @@
 [gencerts.sh](gencerts.sh) creates the general-purpose test certificates and signing keys using
 [openssl.conf](openssl.conf). It requires Bash, `seq`, and the `openssl` command on `PATH`.
 
-| Output         | Purpose                                    | Parent      | PKCS#12 password |
-| -------------- | ------------------------------------------ | ----------- | ---------------- |
-| `ca.crt`       | RSA-2048 root CA                           | Self-signed |                  |
-| `inter.crt`    | RSA-2048 intermediate CA                   | `ca.crt`    |                  |
-| `ocsp.crt`     | RSA-2048 OCSP responder                    | `ca.crt`    |                  |
-| `signer1.p12`  | RSA-2048 signing key and certificate       | `inter.crt` | `signer1`        |
-| `signer2.p12`  | RSA-2048 signing key and certificate       | `inter.crt` | `signer2`        |
-| `signer3.p12`  | RSA-2048 signing key and certificate       | `inter.crt` | `signer3`        |
-| `signerEC.p12` | P-384 EC signing key and certificate       | `inter.crt` | `signerEC`       |
-| `unicode.crt`  | P-384 EC certificate with `CN=unicodeöäüõ` | Self-signed |                  |
+| Output         | Purpose                                         | Parent      | PKCS#12 password |
+| -------------- | ----------------------------------------------- | ----------- | ---------------- |
+| `ca.crt`       | RSA-2048 root CA                                | Self-signed |                  |
+| `inter.crt`    | RSA-2048 intermediate CA                        | `ca.crt`    |                  |
+| `ocsp.crt`     | RSA-2048 OCSP responder                         | `ca.crt`    |                  |
+| `tsa.p12`      | RSA-2048 time-stamping unit key and certificate | `ca.crt`    | `tsa`            |
+| `signer1.p12`  | RSA-2048 signing key and certificate            | `inter.crt` | `signer1`        |
+| `signer2.p12`  | RSA-2048 signing key and certificate            | `inter.crt` | `signer2`        |
+| `signer3.p12`  | RSA-2048 signing key and certificate            | `inter.crt` | `signer3`        |
+| `signerEC.p12` | P-384 EC signing key and certificate            | `inter.crt` | `signerEC`       |
+| `unicode.crt`  | P-384 EC certificate with `CN=unicodeöäüõ`      | Self-signed |                  |
 
-The configuration defines the `v3_ca`, `v3_inter`, `v3_ocsp`, and `v3_usr` extension profiles:
+The configuration defines the `v3_ca`, `v3_inter`, `v3_ocsp`, `v3_tsa`, and `v3_usr` extension profiles:
 CA constraints, key usages, subject/authority key identifiers, certificate policies, and the
 `http://demo.sk.ee/ocsp` responder URL. Its CA database and serial-file paths are relative to the
 working directory. The Unicode certificate is self-signed without these extension profiles.
@@ -58,6 +59,20 @@ The certificates are valid for 3650 days from generation, except `unicode.crt`, 
 365 days. Regeneration creates new keys and certificates; existing signed containers and trust
 lists still refer to the old certificates and need separate updates if those fixtures are replaced.
 The script does not regenerate `tsl.asice` or the `EE_T-*.xml` lists described below.
+
+### Local time-stamping service
+
+The unit test suite does not use the demo TSA. `test/Responder.cpp` serves RFC 3161 time-stamps
+on a free `127.0.0.1` port for the whole run, signed with the `tsa.p12` key, and the tests set
+`TestConfig::tsaUrl` to it. The cached [EE_T.xml](EE_T.xml) therefore differs from the
+[open-eid test-TL](https://github.com/open-eid/test-TL/blob/master/EE_T.xml): it adds a granted
+`TSA/QTST` service `CN=libdigidocpp TSA,C=EE` with the `tsa.p12` certificate and is re-signed with
+the `C=EE/CN=Test TSL` key. Keep that service when refreshing `EE_T.xml` from upstream, and update it
+when `tsa.p12` is regenerated. OCSP requests still go to the `http://demo.sk.ee/ocsp` responder named
+in the test certificates.
+
+The local responder uses one-second receive and send inactivity timeouts so stalled requests do not
+block test-suite shutdown.
 
 ## TSL tests
 

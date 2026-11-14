@@ -83,7 +83,7 @@ struct TestConfig: public ConfCurrent
         profiles.emplace("1.3.6.1.4.1.10015.3.1.1");
         return profiles;
     }
-    string TSUrl() const override { return "http://demo.sk.ee/tsa/"; }
+    string TSUrl() const override { return tsaUrl; }
     bool TSLAutoUpdate() const override { return false; }
     string TSLCache() const override { return path; }
     bool TSLOnlineDigest() const override { return false; }
@@ -92,6 +92,7 @@ struct TestConfig: public ConfCurrent
 
     string tsl;
     string path;
+    inline static string tsaUrl = "http://demo.sk.ee/tsa/";
 };
 DIGIDOCPP_WARNING_POP
 

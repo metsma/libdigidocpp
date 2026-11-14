@@ -7,7 +7,7 @@ add_definitions(
     -DPKCS11_MODULE="${PKCS11_MODULE}"
     -DSIVA_URL="${SIVA_URL}"
 )
-add_executable(unittests libdigidocpp_boost.cpp ../src/util/ZipSerialize.cpp)
+add_executable(unittests libdigidocpp_boost.cpp Responder.cpp Responder.h ../src/util/ZipSerialize.cpp)
 add_executable(TSLTests TSLTests.cpp)
 add_executable(X509CertStoreTests X509CertStoreTests.cpp ../src/crypto/X509CertStore.cpp)
 target_link_libraries(unittests digidocpp digidocpp_tsl Boost::unit_test_framework
